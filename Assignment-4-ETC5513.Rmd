@@ -1,0 +1,476 @@
+---
+title: "Collab-assignment-4"
+author: "Rohan Baghel"
+date: '2022-05-20'
+output: bookdown::html_document2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  eval = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  error = FALSE,
+  out.width = "80%",
+  fig.width = 8, 
+  fig.height = 6,
+  fig.retina = 3,
+  fig.align = "center")
+set.seed(6)
+```
+
+```{r}
+library(tidyverse)
+library(readr)
+library(kableExtra)
+library(bookdown)
+```
+
+```{r read_data}
+La_liga_data <- read.csv("data/laliga_player_stats_english.csv")
+```
+
+
+# Position: Defender
+
+The motive of this section is to find out the **best defender** (defender : a defender is an outfield player whose primary roles are to stop attacks during the game and prevent the opposing team from scoring goals) in Laliga (Spanish football league), season 2019-2020 according to player stats. We will be analyzing different variables and going through different levels, to get the best defender out of the 20 teams. 
+
+```{r}
+defender <- La_liga_data %>%
+  filter(Position == "Defender") %>%
+  select(Team,
+         Name,
+         Games.played,
+         Yellow.Cards,
+         Goals.conceded.while.player.on.pitch,
+         Interceptions,
+         Recoveries,
+         Clearances,
+         Successful.tackles,
+         Unssuccessful.tackles,
+         Fouls.committed,
+         Successful.duels,
+         Duels.lost,
+         Successful.aerial.challenges,
+         Unsuccessful.aerial.challenges)
+```
+
+We will try to find the best defender by going through different levels, the major one being, trying to find the player who has the most recoveries and clearances. 
+
+* Recovery  - A recovery is recorded at the point where the player of the team beginning the possession touches the ball. 
+
+* Clearance - When a player kicks the ball away from the goal they are defending. 
+
+We will only analyze players who have played more than **50%** of the games, considering consistency is key factor for a 38 matches long league.
+
+```{r CvsR, fig.align = 'center', fig.cap = "Clearances vs Recoveries"}
+defender1 <- defender %>%
+  filter(Games.played >= 19)
+ggplot(defender1,
+       aes(x = Clearances,
+           y = Recoveries,
+           colour = Team, 
+           label = Name)) +
+  theme_minimal() +
+  geom_text(size = 3) +
+  theme_gray(base_size = 15) +
+  geom_point() +
+  labs(y = "Number of clearances",
+       x = "Number of Recoveries",
+       title = "Clearances Vs.Recoveries")
+  
+  
+```
+
+From \@ref(fig:CvsR) we can say that **Pique** from **Barcelona** and **Laguardia** from **D. Alaves** have managed to do exceptionally well. Out of the two players, we will try to choose the best defender by bringing in more variables into the picture. 
+
+```{r better}
+defender2 <- defender1 %>%
+  filter(Name == "Piqué" | Name == "Laguardia") %>%
+  mutate(tackles = (Successful.tackles/(Successful.tackles + Unssuccessful.tackles)*100)) %>%
+  mutate(duels = (Successful.duels/(Successful.duels + Duels.lost)*100)) %>%
+  mutate(aerials = (Successful.aerial.challenges/(Unsuccessful.aerial.challenges +
+                                                    Successful.aerial.challenges)*100)) %>%
+  select(Name, tackles, duels, aerials) %>%
+  pivot_longer(!Name, 
+               names_to = "comparison_criteria",
+               values_to = "percentage")
+```
+
+```{r better1, fig.align = 'center', fig.cap = "Pique Vs Laguardia"}
+ggplot(defender2, 
+       aes(x = comparison_criteria,
+           y = percentage,
+           fill = Name)) +
+  geom_bar( stat = "identity",
+            position = "dodge") +
+  labs(y = "Percentage",
+       x = "Comparison criteria",
+       title = "Pique Vs Laguardia")
+  
+```
+
+
+In the figure above \@ref(fig:better1) we have calculated the percentage of succeessful tackles, duels and Aerial duels won by the each of the defender who came on top in \@ref(fig:CvsR) i.e Pique and Laguardia. Laguardia top the charts between him and Pique in Successful tackles made and Duels won but the difference is bleak. Pique had **20%** more Aerial duel success than Laguardia. 
+
+Seems like both of them are are still going to head to head. Now we have to judge them by number of mistakes made by them during the season.
+
+```{r worse}
+defender3 <- defender1 %>%
+  filter(Name == "Piqué" | Name == "Laguardia") %>%
+  select(Name, 
+         Team, 
+         Goals.conceded.while.player.on.pitch,
+         Yellow.Cards,
+         Fouls.committed) %>%
+  kable(caption = "Comparison of Pique and Laguardia (worse)") %>%
+  kable_styling(position = "center")
+
+defender3
+```
+
+
+From the table \@ref(tab:worse) we can see Pique has made lesser mistakes in a match the while being on the field as compared to Laguardia. His team conceded lesser goals, he made lesser fouls which resulted him getting penalized less often. We can conclude from our analysis that Pique from Barcelona had the most impact as a defender. On top of that he was also able to contribute in the attack as he scored 4 goals for FC Barcelona.
+
+```{r}
+scored <- La_liga_data %>%
+  filter(Name == "Piqué") %>%
+  select(Name, Team,  Goals.scored) %>%
+  kable(caption = "Goals scored by Pique") %>%
+  kable_styling(position = "center")
+
+scored
+
+```
+
+
+
+# Position: Forward
+
+The aim of this section is to analyse which player is the best in the *Forward position* in the LaLiga Tournament based on data from 2019-2020.  
+
+```{r Filter-Data}
+Forward <- La_liga_data %>%
+  filter (Position == "Forward")
+
+Forward <- Forward %>%
+  select(Team, Name, Games.played, Yellow.Cards, Goals.scored, Penalties.scored, Successful.tackles, Recoveries, Successful.duels, Assists, Interceptions, Recoveries, Successful.aerial.challenges) %>%
+  rename("Games_played" = Games.played,
+         "Yellow_cards" = Yellow.Cards,
+         "Goals_scored" = Goals.scored,
+         "Penalties_scored" = Penalties.scored,
+         "Successful_tackles" = Successful.tackles,
+         "Successful_duels" = Successful.duels,
+         "Successful_aerial_challenges" = Successful.aerial.challenges)
+```
+
+Goals Scored, Penalties Scored and Assists account for the most successful outcome given by a player in the Forward position.
+
+```{r Goals-Analysis}
+Forward <- Forward %>%
+  mutate(goals_per_game = ((Goals_scored + Penalties_scored + Assists)/Games_played)) %>%
+  arrange(desc(goals_per_game)) %>%
+  mutate(Goal_rank = 1:94)
+
+Forward_Goal <- Forward %>%
+  slice_head(n=5) %>%
+  select(Team, Name, goals_per_game, Goal_rank) %>%
+  kable(caption = "Top 5 forward position players for goals per game") %>%
+  kable_styling(position = "center")
+
+Forward_Goal
+```
+
+The table \@ref(tab:Goals-Analysis) displays the Name and Team of the top 5 players in the forward position with the highest goals, penalties and assists per game. Messi from Team FC Barcelona holds the first rank in this analysis with an average of 1.55 goals per match, followed by lago Aspas and Suárez.
+
+```{r Success-Scores}
+Forward <- Forward %>%
+  mutate(success_score = (Successful_tackles + Successful_duels + Successful_aerial_challenges)/Games_played) %>%
+  arrange(desc(success_score))  %>%
+  mutate(Score_rank = 1:94)
+
+Forward_Score <- Forward  %>%
+  slice_head(n=5) %>%
+  select(Team, Name, success_score, Score_rank) %>%
+  kable(caption = "Top 5 forward position players for Success Score") %>%
+  kable_styling(position = "center")
+
+Forward_Score
+```
+As seen from the table \@ref(tab:Success-Scores), Calleri from team D. Alavés tops the table  with a total success score of 10.02 followed by Enric Gallego and Carrillo The Success score in this table is calculated by adding the successful duels, tackles and aerial challenges by each player divided by the number of games they have played.
+
+```{r goals-v-success, fig.cap = "Goals vs Success score", fig.align='center'}
+
+library(plotly)
+p <- ggplot(Forward) + geom_point(aes(x=success_score, y = goals_per_game, hoverinfo = Name)) + labs(x = "Success Score", y = "Goals", title = "Goals vs Success Score")
+ggplotly(p)
+```
+The figure \@ref(fig:goals-v-success) is a scatter plot of all the players' goals and success score per game. The players that occur on the top right corner are so far the top players in our analysis. By hovering the cursor over points we can see that Messi appears to be one of the top players.
+
+
+```{r Yellow-cards, fig.cap = "Top 20 yellow card players", fig.align='center'}
+Forward_yellow <- Forward %>% select(Team, Name, Yellow_cards) %>%
+  arrange(desc(Yellow_cards)) %>% slice_head(n=20)
+
+ggplot(Forward_yellow) + geom_col(aes(y=Yellow_cards, x=fct_reorder(Name, Yellow_cards)), fill = "#F6BE00") + 
+  theme(axis.text.x = element_text(angle = 45)) +
+  labs(title = "Highest yellow card players")
+```
+
+The figure \@ref(fig:Yellow-cards) displays the players with the highest number of yellow cards. 
+
+```{r Top}
+Forward_top <- Forward %>% anti_join(Forward_yellow) %>%
+  mutate(rank = (Goal_rank + Score_rank)/2) %>%
+  arrange(rank) %>%
+  select(Team, Name) %>% 
+  slice_head(n=5)
+
+Forward_top <- Forward_top %>% slice_head(n=5) %>%
+  kable(caption = "Top 5 forward position players") %>%
+  kable_styling(position = "center")
+
+Forward_top
+```
+
+The table \@ref(tab:Top) displays the top 5 forward position players in the LaLiga Tournament according to the 2019-2022 data on the basis of their goals, assists, successful duels and tackles per game and after removing the players with high number of yellow cards. **[Messi from FC Barcelona](images/messi.jpeg)** is at the top of the list followed by M. Gómez, Jorge Molina, Williams and Enric Gallego.\
+
+# Position: Midfielder
+
+### Aim :
+
+* Find out the best offensive midfielders in La Liga (2019-2020) and analyze their performance.
+
+* Find out the best defensive midfielders in La Liga (2019-2020) and analyze their performance.
+
+Midfielders are the players that are present between the forwards and the defenders. The role of a midfielder is to support both the strikers and the defenders. They act as a link between the offense and defense of a team. The flow of a game is dictated by the midfielders as they are the ones responsible for keeping the ball in possession.
+
+```{r}
+Midfielder_data <- La_liga_data %>%
+  filter(Position == "Midfielder") %>%
+  select(Team,
+         Name,
+         Position,
+         Shirt.number,
+         Minutes.played,
+         Games.played,
+         Passes,
+         Tackles,
+         Interceptions,
+         Recoveries,
+         Clearances,
+         Successful.tackles,
+         Unssuccessful.tackles,
+         Fouls.committed,
+         Successful.duels,
+         Duels.lost,
+         Successful.aerial.challenges,
+         Unsuccessful.aerial.challenges,
+         Successful.dribbles,
+         Unsuccessful.dribbles,
+         Shots.on.target,
+         Shots,
+         Assists,
+         Goals.scored,
+         Penalties.won,
+         Fouls.committed,
+         Fouls.suffered,
+         Yellow.Cards,
+         Second.Yellows,
+         Red.Cards,
+         Fouls.committed.per.card,
+         Penalties.given.away) %>%
+  arrange(desc(Assists))
+```
+
+```{r }
+Top_10_Midfielder_Assists <- Midfielder_data %>%
+  select(Team,
+         Name,
+         Shirt.number,
+         Games.played,
+         Assists) %>%
+  arrange(desc(Assists))
+```
+
+```{r}
+Top_10_Midfielder_Goals <- Midfielder_data %>%
+  select(Team,
+         Name,
+         Shirt.number,
+         Games.played,
+         Goals.scored) %>%
+  arrange(desc(Goals.scored))
+```
+
+From the table \@ref(tab:Attack) we can see the attacking performance of midfielders in La Liga. Sarabia of Sevilla FC stands at the top with 12 goals scored and 13 assists with 33 games played. Every other player has fewer assists than him and only J. Morales from Levante UD was able to match his record of 12 goals. 
+
+```{r Attack }
+Attack_performance <- inner_join(Top_10_Midfielder_Goals,Top_10_Midfielder_Assists)[1:10,1:6]
+
+kable(Attack_performance, caption = "Best Offensive Midfielders in La Liga (Statistics)") %>%
+  kable_material() %>%
+  kable_styling(position = "center")
+```
+
+
+The figure \@ref(fig:ggAttack) gives a better outlook at the performance of the top midfielders in La Liga. Sarabia and J. Morales standout among their peers as they clearly the leaders in attacking style play, they have scored goals and provided assistance for the benefit of their team. Joaquin from Real Betis is a special case as he is the only midfielder that has provided zero assists but scored 6 goals for his team, earning him a place among the top ten midfielders of La Liga. 
+
+
+```{r ggAttack,fig.cap = "Best Offensive Midfielders in La Liga" }
+ggplot(Attack_performance,
+       aes(x = Games.played)) +
+  geom_col(aes( y = Goals.scored, color = "Goals scored")) +
+  geom_col(aes( y = Assists, color = "Assists")) +
+  facet_wrap(~Name, ncol = 5) +
+  theme_classic() +
+  xlab("Games Played") +
+  ylab("Attack Performance") +
+  labs(title = "Best Offensive Midfielders in La Liga")
+  
+```
+
+```{r}
+Top_10_Midfielder_Recoveries <- Midfielder_data %>%
+  select(Team,
+         Name,
+         Shirt.number,
+         Games.played,
+         Recoveries) %>%
+  arrange(desc(Recoveries))
+
+```
+
+```{r}
+Top_10_Midfielder_Successful_tackles <- Midfielder_data %>%
+  select(Team,
+         Name,
+         Shirt.number,
+         Games.played,
+         Successful.tackles) %>%
+  arrange(desc(Successful.tackles))
+```
+
+From the table \@ref(tab:Defense), we see the top defensive midfielders in La Liga. Banega from Sevilla FC tops the table, making 290 recoveries and 50 successful tackles in 32 games. Only Rodrigo from Atlético de Madrid has the most successful tackles than Banega standing at 70. None of the other peers have come closer Rodrigo in their skill of tackling an opponent. 
+
+```{r Defense}
+
+Defence_Performance <- inner_join(Top_10_Midfielder_Recoveries,Top_10_Midfielder_Successful_tackles)[1:10,1:6]
+
+kable(Defence_Performance, caption = "Best Defensive Midfielders in La Liga (Statistics)") %>%
+  kable_material() %>%
+  kable_styling(position = "center")
+
+```
+
+
+From the figure \@ref(fig:ggDefense) we can see that all the defensive midfielders have been almost at the same skill. The top performers Banega and Rodrigo stand out in their individual departments but are almost at the same level as their peers in La Liga. Banega seems to more of a top performer because he is on the top of table even though has played the fewest games 32, except Rubén Pérez J. who has played 31 and is at the bottom of the table.
+
+
+```{r ggDefense,fig.cap = "Best Defensive Midfielders in La Liga " }
+ggplot(Defence_Performance,
+       aes(x = Games.played)) +
+  geom_col(aes(y = Recoveries, color = "Recoveries")) +
+  geom_col( aes(y = Successful.tackles, color = "Successful tackles")) +
+  facet_wrap(~Name, ncol = 5) +
+  theme_classic() +
+  xlab("Games Played") +
+  ylab("Defence Performance") +
+  labs(title = "Best Defensive Midfielders in La Liga ") 
+```
+
+The best overall performance is given by Parejo of Valencia CF as we can from the table \@ref(tab:best). He has made 270 recoveries, 42 successful tackles, scored 9 goals and made 7 assists. He has been at the third position in both offensive midfielders and defensive midfielders. His performance has been exceptional as midfielder and is quite an ideal candidate for any team.
+
+
+```{r best}
+Best_Midfielder <- inner_join(Defence_Performance,Attack_performance)
+
+kable(Best_Midfielder, caption = "Best Overall Performace") %>%
+  kable_material() %>%
+  kable_styling(position = "center")
+
+```
+
+
+# Position : Goalkeeper
+
+The Aim of this section is to find out the __best goalkeeper__ in La-Liga (A Spanish football league) in season 2019-2020 according to player stats. We will be performing an analysis to different variables to find out best goalkeeper. 
+
+__Question:__
+
+__ Which football team's goalkeeper has the best performance in La-Liga in the season 2019 - 2020 ?__
+
+```{r}
+goal_data <- La_liga_data %>%
+  filter(Position == "Goalkeeper") %>%
+  select(Team, Position, Name, Games.played, Goals.conceded.while.player.on.pitch, Recoveries, Clearances) %>%
+  rename("Game_played" = Games.played,
+         "Goal_conceded" = Goals.conceded.while.player.on.pitch)
+mean_goal_data <- goal_data %>%
+  filter(Game_played > 0)
+```
+
+- The football term __"Recoveries"__ can be defined as "Ball recoveries" stands for recovering the ball in a situation where neither team has possession or where the ball has been played directly to a player by an opponent.
+
+- The football term __"Clearances"__ can be defined as when a goalkeeper kicks the ball away from the goal they are defending
+
+Those two terms __"Recoveries" and "Clearances"__ are the two main variables we will be focused on for analysis goalkeeper's performance. 
+
+```{r graph-data, echo = FALSE, message = FALSE, warning = FALSE, fig.cap = "Recoveries and Clearances"}
+p2 <- ggplot(mean_goal_data, 
+             aes(x = Name, 
+                 y = Recoveries, label = Name)) +
+  geom_point() +
+  geom_text(hjust = 0.5, vjust = -1) + 
+  theme(axis.text.x=element_blank(),
+        axis.ticks = element_blank())
+
+p3 <- ggplot(mean_goal_data, 
+             aes(x = Name, 
+                 y = Clearances, label = Name)) +
+  geom_point() +
+  geom_text(hjust = 0.5, vjust = -1) + 
+  theme(axis.text.x=element_blank(),
+        axis.ticks = element_blank())
+
+gridExtra::grid.arrange(p2, p3, ncol = 2)
+```
+
+In Figure \@ref(fig:graph-data), it shows the data of Recoveries and Clearances for each goalkeeper in La-Liga during the season 2019 to 2020.
+
+```{r scatter-plot, fig.cap = "Scatter plot for Recoveries and Clearances"}
+ggplot(goal_data, 
+       aes(x = Recoveries,
+           y = Clearances)) +
+  geom_point() +
+  theme_bw()
+```
+
+In Figure \@ref(fig:scatter-plot), it displays a scatter plot for goalkeepers' Recoveries and Clearances, it demonstrates there is a positive relationship between variable Clearances and Recoveries.
+
+```{r goal-data1, echo = FALSE, message = FALSE, warning = FALSE}
+goal_data2 <- goal_data %>%
+  select(Team, Name, Recoveries) %>%
+  arrange(desc(Recoveries)) %>%
+  mutate("Rank_recoveries" = 1:n())
+
+goal_data3 <- goal_data %>%
+  select(Name, Clearances) %>%
+  arrange(desc(Clearances)) %>%
+  mutate("Rank_clearances" = 1:n())
+
+goal_data4 <- goal_data2 %>%
+  left_join(goal_data3, by = "Name") %>%
+  mutate("Average" = (Rank_recoveries + Rank_clearances)/2) %>%
+  arrange(Average) %>%
+  head(10) %>%
+  select(Team, Name, Recoveries, Clearances) %>%
+  mutate("Rank" = 1:n())
+
+knitr::kable(goal_data4, caption = "Top 10 Goalkeepers" , "pipe", align = "llccr")
+```
+
+In Table \@ref(tab:goal-data1), it shows the football recoveries and clearances of top 10 goalkeepers in in La-Liga during the season 2019 to 2020.
+
+In this section, the data of goalkeeper has been using to investigate and in a aim to find which goalkeeper is overall performing best in La-Liga during the season 2019 to 2020. The Figure \@ref(fig:graph) shows the performance of each single goalkeeper in term of Recoveries and Clearances during the season. In the Figure \@ref(fig:scatterplot), it demonstrates that there is a linear relationship between Recoveries and Clearances, on other words, a goalkeeper tends to have a good performance in term of Recoveries also performing well in term of Clearances. Based on the observation in the scatter plot, Recoveries and Clearances are two standard variables sharing some similarity. Hence, we can rank each variable Recoveries and Clearance and combine the ranks to find the average performance on both Recoveries and Clearances, and then the top 10 goalkeepers are listed out based on the average rank of performance. As displayed on Table \@ref(tab:goal-data1), the goalkeeper David Soria, from football team Getafe CF, is performing best among all goalkeepers in La-Liga during season 2019 - 2020. 
